@@ -1,3 +1,4 @@
+import os
 from django.shortcuts import render
 from django.http import HttpResponse
 
@@ -123,3 +124,49 @@ def generate_bar_chart(data, xlabel, ylabel):
     buffer.close()
     graphic = base64.b64encode(image_png).decode('utf-8')
     return graphic
+
+# ---------------------------------------------------------------------------
+# Sistema de recomendacion basado en embeddings (HuggingFace, gratis)
+# ---------------------------------------------------------------------------
+
+import numpy as np
+
+from movie import hf_client
+
+
+def recommend(request):
+    prompt = request.GET.get('prompt')
+    recommended_movie = None
+    similarity_score = None
+    model_used = None
+    error = None
+
+    if prompt:
+        try:
+            client = hf_client.get_client()
+            model_used, prompt_emb = hf_client.embed(client, prompt)
+
+            best_movie = None
+            max_similarity = -1
+            for movie in Movie.objects.all():
+                movie_emb = np.frombuffer(movie.emb, dtype=np.float32)
+                if movie_emb.shape != prompt_emb.shape:
+                    continue  # embedding viejo o sin generar
+                similarity = hf_client.cosine_similarity(prompt_emb, movie_emb)
+                if similarity > max_similarity:
+                    max_similarity = similarity
+                    best_movie = movie
+
+            recommended_movie = best_movie
+            if best_movie is not None:
+                similarity_score = round(float(max_similarity), 4)
+        except Exception as e:
+            error = str(e)
+
+    return render(request, 'recommend.html', {
+        'prompt': prompt,
+        'movie': recommended_movie,
+        'similarity': similarity_score,
+        'model': model_used,
+        'error': error,
+    })

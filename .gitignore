@@ -7,3 +7,15 @@
 /*.env
 /images.zip
 /DjangoProjectBase/openAI.env
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Entornos virtuales
+.venv/
+# venv/
+# env/
+
+# Logs
+*.log
